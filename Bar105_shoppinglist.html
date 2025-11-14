@@ -1,0 +1,246 @@
+<!doctype html>
+<html lang="ja">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Bar105 — 仕入れ計算ツール</title>
+  <style>
+    :root{
+      --bg:#0b0f14;
+      --panel:#12171f;
+      --panel2:#181e26;
+      --accent:#c9a063;
+      --accent2:#8a6d43;
+      --text:#e8e2d3;
+      --muted:#a19886;
+    }
+    html,body{margin:0;padding:0;background:var(--bg);color:var(--text);font-family:'Shippori Mincho',serif;}
+    .wrap{max-width:1000px;margin:40px auto;padding:24px}
+    h1{font-size:24px;margin:0;color:var(--accent)}
+    header{margin-bottom:24px;border-bottom:1px solid rgba(255,255,255,0.05);padding-bottom:16px}
+    .card{background:var(--panel);padding:20px;border-radius:12px;box-shadow:0 0 20px rgba(0,0,0,0.6);border:1px solid rgba(255,255,255,0.06)}
+    .grid{display:grid;grid-template-columns:1fr 320px;gap:16px}
+    table{width:100%;border-collapse:collapse;font-size:14px}
+    th,td{padding:8px;text-align:left}
+    thead th{color:var(--muted)}
+    tbody tr{border-top:1px solid rgba(255,255,255,0.05)}
+    input{background:var(--panel2);border:1px solid rgba(255,255,255,0.08);color:var(--text);padding:6px;border-radius:6px;font-size:14px}
+    .qty{width:70px}
+    .btn{padding:8px 12px;border-radius:8px;border:none;cursor:pointer;font-size:14px}
+    .btn-primary{background:var(--accent2);color:white}
+    .btn-ghost{background:transparent;border:1px solid rgba(255,255,255,0.15);color:var(--muted)}
+    .btn-danger{background:transparent;border:1px solid rgba(255,80,80,0.3);color:#ffb3b3}
+    .muted{color:var(--muted);font-size:13px}
+    .total{font-size:22px;font-weight:700;margin-top:6px;color:var(--accent)}
+    textarea{width:100%;background:var(--panel2);border-radius:6px;border:1px solid rgba(255,255,255,0.08);color:var(--text);padding:8px}
+    .copy-status{display:inline-block;margin-left:8px;font-size:13px;color:var(--muted)}
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <header>
+      <h1>Bar105 — 仕入れ計算ツール</h1>
+      <div style="margin-top:6px">
+        <label><input type="checkbox" id="editMode"> 編集モード</label>
+      </div>
+    </header>
+
+    <div class="grid">
+      <div class="card">
+        <div style="display:flex;justify-content:space-between;align-items:center">
+          <strong>材料リスト</strong>
+          <div style="display:flex;gap:6px">
+            <button id="addItem" class="btn btn-ghost">材料追加</button>
+            <button id="resetDefaults" class="btn btn-ghost">初期化</button>
+            <button id="resetQty" class="btn btn-ghost">数量リセット</button>
+          </div>
+        </div>
+
+        <table style="margin-top:14px">
+          <thead>
+            <tr>
+              <th>材料名</th><th>単価</th><th>個数</th><th>小計</th><th></th>
+            </tr>
+          </thead>
+          <tbody id="itemsBody"></tbody>
+        </table>
+      </div>
+
+      <aside class="card">
+        <label class="muted">報告者</label>
+        <input id="reporter" type="text" placeholder="例：サヤ" style="margin-top:6px;width:100%" />
+
+        <div style="margin-top:16px" class="muted">合計金額</div>
+        <div class="total" id="totalArea">¥0</div>
+
+        <div style="margin-top:14px;display:flex;gap:10px;flex-wrap:wrap;align-items:center">
+          <button id="copyMemo" class="btn btn-primary">メモをコピー</button>
+          <span id="copyStatus" class="copy-status"></span>
+          <button id="previewBtn" class="btn btn-ghost">プレビュー</button>
+        </div>
+
+        <textarea id="previewArea" rows="10" style="margin-top:14px"></textarea>
+      </aside>
+    </div>
+  </div>
+
+  <script>
+    const DEFAULT_ITEMS = {
+      "砂糖": 300,
+      "炭酸水": 1200,
+      "ミント": 600,
+      "シュガーシロップ": 1500,
+      "くるみ": 300,
+      "トマト": 1200,
+      "チェダーチーズ": 300,
+      "にんにく": 300,
+      "きのこ": 2400,
+      "油": 300
+    };
+
+    const LS_KEY = 'gta5_bar_items_v1';
+
+    function loadItems(){ const raw = localStorage.getItem(LS_KEY); return raw? JSON.parse(raw):{...DEFAULT_ITEMS}; }
+    function saveItems(i){ localStorage.setItem(LS_KEY, JSON.stringify(i)); }
+
+    let items = loadItems();
+
+    const itemsBody = document.getElementById('itemsBody');
+    const totalArea = document.getElementById('totalArea');
+    const reporter = document.getElementById('reporter');
+    const previewArea = document.getElementById('previewArea');
+    const copyStatus = document.getElementById('copyStatus');
+    const editMode = document.getElementById('editMode');
+
+    function formatJPY(n){ return '¥'+Number(n).toLocaleString('ja-JP'); }
+
+    function td(el){ const t=document.createElement('td'); t.appendChild(el); return t; }
+
+    function render(){
+      itemsBody.innerHTML = '';
+      const editing = editMode.checked;
+
+      Object.keys(items).forEach(key =>{
+        const price = items[key];
+        const tr=document.createElement('tr');
+
+        const nameInput=document.createElement('input'); nameInput.value=key;
+        nameInput.disabled=!editing;
+        nameInput.addEventListener('change',e=>{
+          if(!editing) return;
+          const newName=e.target.value.trim();
+          if(!newName||newName===key){ e.target.value=key; return; }
+          if(items[newName]!==undefined){ alert('同名の材料があります'); e.target.value=key; return; }
+          items[newName]=items[key]; delete items[key]; saveItems(items); render();
+        });
+
+        const priceInput=document.createElement('input'); priceInput.type='number'; priceInput.value=price;
+        priceInput.disabled=!editing;
+        priceInput.addEventListener('change',e=>{
+          if(!editing) return;
+          items[key]=Math.max(0,Number(e.target.value)||0); saveItems(items); render();
+        });
+
+        const qtyInput=document.createElement('input'); qtyInput.type='number'; qtyInput.value=0; qtyInput.className='qty';
+        qtyInput.addEventListener('input',renderTotals);
+
+        const subCell=document.createElement('td'); subCell.textContent=formatJPY(0);
+
+        const del=document.createElement('button'); del.textContent='削除'; del.className='btn btn-danger';
+        del.style.display = editing? 'inline-block':'none';
+        del.addEventListener('click',()=>{
+          if(!editing) return;
+          if(confirm(key+' を削除しますか？')){ delete items[key]; saveItems(items); render(); }
+        });
+
+        tr.appendChild(td(nameInput));
+        tr.appendChild(td(priceInput));
+        tr.appendChild(td(qtyInput));
+        tr.appendChild(subCell);
+        const delTd=document.createElement('td'); delTd.appendChild(del); tr.appendChild(delTd);
+
+        tr._key=key; tr._qty=qtyInput; tr._sub=subCell;
+        itemsBody.appendChild(tr);
+      });
+      renderTotals();
+    }
+
+    function renderTotals(){
+      let total=0;
+      itemsBody.querySelectorAll('tr').forEach(r=>{
+        const qty=Number(r._qty.value)||0;
+        const price=Number(items[r._key]||0);
+        const sub=qty*price;
+        r._sub.textContent=formatJPY(sub);
+        total+=sub;
+      });
+      totalArea.textContent=formatJPY(total);
+    }
+
+    document.getElementById('addItem').addEventListener('click',()=>{
+      if(!editMode.checked){ alert('編集モードをオンにしてください'); return; }
+      let base='新しい材料',i=1,name=base;
+      while(items[name]!==undefined) name=base+(i++);
+      items[name]=0; saveItems(items); render();
+    });
+
+    document.getElementById('resetDefaults').addEventListener('click',()=>{
+      if(!editMode.checked){ alert('編集モード時のみ使用できます'); return; }
+      if(confirm('初期値に戻しますか？')){ items={...DEFAULT_ITEMS}; saveItems(items); render(); }
+    });
+
+    document.getElementById('resetQty').addEventListener('click',()=>{
+      itemsBody.querySelectorAll('tr').forEach(r=> r._qty.value=0);
+      renderTotals();
+    });
+
+    editMode.addEventListener('change',render);
+
+    document.getElementById('previewBtn').addEventListener('click',()=>{
+      previewArea.value=buildMemo();
+    });
+
+    document.getElementById('copyMemo').addEventListener('click',async(e)=>{
+      const text=buildMemo(); copyStatus.textContent=''; const btn=e.currentTarget; btn.disabled=true;
+      try{
+        if(navigator.clipboard) await navigator.clipboard.writeText(text);
+        else{
+          const ta=document.createElement('textarea'); ta.value=text;
+          ta.style.position='fixed'; ta.style.left='-9999px';
+          document.body.appendChild(ta); ta.select(); document.execCommand('copy'); document.body.removeChild(ta);
+        }
+        copyStatus.textContent='コピーしました'; setTimeout(()=> copyStatus.textContent='',2000);
+      }catch(err){ copyStatus.textContent='コピー不可'; previewArea.value=text; }
+      finally{ btn.disabled=false; }
+    });
+
+    function buildMemo(){
+      const d=new Date();
+      const date=`${d.getFullYear()}/${String(d.getMonth()+1).padStart(2,'0')}/${String(d.getDate()).padStart(2,'0')}`;
+      const who=(reporter.value||'（名前）').trim();
+      let total=0; const lines=[];
+
+      itemsBody.querySelectorAll('tr').forEach(r=>{
+        const qty=Number(r._qty.value)||0;
+        if(qty>0){
+          const price=Number(items[r._key]||0);
+          const sub=qty*price;
+          total+=sub;
+          lines.push(`${r._key} ${price.toLocaleString('ja-JP')}円×${qty}個＝${sub.toLocaleString('ja-JP')}円`);
+        }
+      });
+
+      const out=[];
+      out.push(`${date} ${who} 買い出し分のレシートです。`);
+      out.push(`合計金額　${total.toLocaleString('ja-JP')}円`);
+      out.push("");
+      if(lines.length===0) out.push('(購入した物はありません)');
+      else out.push(...lines);
+
+      return out.join("\n");
+    }
+
+    render();
+  </script>
+</body>
+</html>
