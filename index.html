@@ -10,7 +10,7 @@
   main{padding:20px;max-width:1200px;margin:auto;display:grid;grid-template-columns:1fr 1fr;gap:20px;}
   h2{border-left:4px solid #b48a5a;padding-left:8px;margin:8px 0}
   .card{background:#181818;padding:16px;border-radius:10px;border:1px solid #333;}
-  input[type='number'],input[type='text']{width:70px;background:#222;border:1px solid #444;color:#fff;padding:4px;border-radius:4px;}
+  input[type='number']{width:70px;background:#222;border:1px solid #444;color:#fff;padding:4px;border-radius:4px;text-align:center;}
   .menu-row,.item-row{display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;gap:8px}
   .menu-controls button,.item-controls button{width:34px;height:28px;border-radius:6px;border:none;background:#333;color:#fff;cursor:pointer}
   .copy-btn,.reset-btn{padding:10px 18px;background:#b48a5a;color:#000;border:none;border-radius:6px;cursor:pointer;margin-top:10px;margin-right:8px}
@@ -26,7 +26,6 @@
 </header>
 
 <main>
-  <!-- 左：メニュー（飲み物・食べ物） -->
   <div class="card">
     <h2>メニュー（飲み物）</h2>
     <div id="drinkMenu"></div>
@@ -34,7 +33,6 @@
     <div id="foodMenu"></div>
   </div>
 
-  <!-- 右：プレビューと合計 -->
   <div class="card">
     <h2>プレビュー（材料一覧）</h2>
     <textarea id="preview" readonly></textarea>
@@ -44,233 +42,126 @@
     </div>
   </div>
 
-  <!-- 下：材料（店舗別） -->
   <div class="card" style="grid-column: span 2;">
     <h2>材料一覧（店舗別）</h2>
     <div class="stores">
-      <div>
-        <h3>店舗①</h3>
-        <div id="store1"></div>
-      </div>
-      <div>
-        <h3>店舗②</h3>
-        <div id="store2"></div>
-      </div>
-      <div>
-        <h3>店舗③</h3>
-        <div id="store3"></div>
-      </div>
+      <div><h3>店舗①</h3><div id="store1"></div></div>
+      <div><h3>店舗②</h3><div id="store2"></div></div>
+      <div><h3>店舗③</h3><div id="store3"></div></div>
     </div>
   </div>
 </main>
 
 <script>
-// ===== 材料データ =====
 const items = {
-  'ショウガ':300,'チェダーチーズ':300,'にんにく':300,'きのこ':2400,'トマト':1200,'豚肉':500,'みかん':1200,
-  'ミント':600,'くるみ':300,'まめ':200,'落花生':200,'りんご':1500,'油':300,'塩':1000,
-  '砂糖':300,'ガムシロップ':1500,'ココアパウダー':600,'小麦粉':300,'イースト':300,
-  '炭酸水':1200,'牛乳':600,'料理酒':3000
+ 'ショウガ':300,'チェダーチーズ':300,'にんにく':300,'きのこ':2400,'トマト':1200,'豚肉':500,'みかん':1200,
+ 'ミント':600,'くるみ':300,'まめ':200,'落花生':200,'りんご':1500,'油':300,'塩':1000,
+ '砂糖':300,'ガムシロップ':1500,'ココアパウダー':600,'小麦粉':300,'イースト':300,
+ '炭酸水':1200,'牛乳':600,'料理酒':3000
 };
+const storeGroup={1:['ショウガ','チェダーチーズ','にんにく','きのこ','トマト','豚肉','みかん','ミント','くるみ','まめ','落花生','りんご','油','塩'],2:['砂糖','ガムシロップ','ココアパウダー','小麦粉','イースト'],3:['炭酸水','牛乳','料理酒']};
 
-const storeGroup = {
-  1:['ショウガ','チェダーチーズ','にんにく','きのこ','トマト','豚肉','みかん','ミント','くるみ','まめ','落花生','りんご','油','塩'],
-  2:['砂糖','ガムシロップ','ココアパウダー','小麦粉','イースト'],
-  3:['炭酸水','牛乳','料理酒']
-};
-
-// ===== メニューレシピ =====
 const menus = {
-  // 飲み物
-  'テキーラサンライズ':{cat:'drink','砂糖':1,'炭酸水':1,'みかん':1},
-  'マティーニ':{cat:'drink','料理酒':1},
-  'マンハッタン':{cat:'drink','料理酒':1},
-  'モヒート':{cat:'drink','砂糖':1,'炭酸水':1,'ミント':1},
-  'ウィスキー(ロック)':{cat:'drink','砂糖':1,'炭酸水':1,'ミント':1},
-  'ジントニック':{cat:'drink','砂糖':1,'炭酸水':1},
-  'カルーアミルク':{cat:'drink','ココアパウダー':1,'砂糖':1,'牛乳':1},
-  'ファジーネーブル':{cat:'drink','砂糖':1,'みかん':1},
-  'ビール':{cat:'drink','砂糖':1,'イースト':1,'小麦粉':1},
-
-  // 食べ物
-  'アヒージョ':{cat:'food','にんにく':1,'きのこ':1,'油':1},
-  'カプレーゼ':{cat:'food','トマト':1,'チェダーチーズ':1},
-  'りんごとシナモンのスティック':{cat:'food','りんご':1,'ショウガ':1,'砂糖':1},
-  '生ハム':{cat:'food','豚肉':1,'塩':1},
-  'ミックスナッツ':{cat:'food','くるみ':1,'まめ':1,'落花生':1}
+ 'テキーラサンライズ':{cat:'drink','砂糖':1,'炭酸水':1,'みかん':1}, 'マティーニ':{cat:'drink','料理酒':1},
+ 'マンハッタン':{cat:'drink','料理酒':1}, 'モヒート':{cat:'drink','砂糖':1,'炭酸水':1,'ミント':1},
+ 'ウィスキー(ロック)':{cat:'drink','砂糖':1,'炭酸水':1,'ミント':1}, 'ジントニック':{cat:'drink','砂糖':1,'炭酸水':1},
+ 'カルーアミルク':{cat:'drink','ココアパウダー':1,'砂糖':1,'牛乳':1}, 'ファジーネーブル':{cat:'drink','砂糖':1,'みかん':1},
+ 'ビール':{cat:'drink','砂糖':1,'イースト':1,'小麦粉':1},
+ 'アヒージョ':{cat:'food','にんにく':1,'きのこ':1,'油':1}, 'カプレーゼ':{cat:'food','トマト':1,'チェダーチーズ':1},
+ 'りんごとシナモンのスティック':{cat:'food','りんご':1,'ショウガ':1,'砂糖':1}, '生ハム':{cat:'food','豚肉':1,'塩':1},
+ 'ミックスナッツ':{cat:'food','くるみ':1,'まめ':1,'落花生':1}
 };
 
-// ===== 状態 =====
-let autoState = {};   // レシピ（メニュー）から計算される数量
-let manualState = {}; // 材料欄で手入力された追加分（差分）
-let menuState = {};   // メニューごとの個数
+let autoState={}, manualState={}, menuState={};
+function ensure(){Object.keys(items).forEach(n=>{if(autoState[n]==null)autoState[n]=0;if(manualState[n]==null)manualState[n]=0;});}
 
-// 初期化 helper
-function ensureAllStates(){
-  Object.keys(items).forEach(name=>{
-    if(autoState[name]==null) autoState[name]=0;
-    if(manualState[name]==null) manualState[name]=0;
-  });
-}
-
-// ===== 描画 =====
-function renderMenus(){
-  const drink = document.getElementById('drinkMenu');
-  const food = document.getElementById('foodMenu');
-  drink.innerHTML=''; food.innerHTML='';
-
-  Object.keys(menus).forEach(name=>{
-    if(menuState[name]==null) menuState[name]=0;
-    const row=document.createElement('div'); row.className='menu-row';
-
-    row.innerHTML = `
-      <div style="flex:1">${name}</div>
-      <div class="menu-controls">
-        <button aria-label="decrease" onclick="addMenu('${escapeJs(name)}',-1)">-</button>
-        <input id="m-${escapeId(name)}" type="number" min="0" value="${menuState[name]}" onchange="setMenu('${escapeJs(name)}',this.value)" style="width:60px;text-align:center" />
-        <button aria-label="increase" onclick="addMenu('${escapeJs(name)}',1)">+</button>
-      </div>
-    `;
-
-    (menus[name].cat==='drink' ? drink : food).appendChild(row);
-  });
-}
-
-function renderItems(){
-  ['store1','store2','store3'].forEach(id=>document.getElementById(id).innerHTML='');
-  ensureAllStates();
-
-  Object.keys(items).forEach(name=>{
-    const display = Math.max(0,(autoState[name]||0) + (manualState[name]||0));
-    const row=document.createElement('div'); row.className='item-row';
-    row.innerHTML = `
-      <div style="flex:1">${name} (¥${items[name]})</div>
-      <div class="item-controls">
-        <button onclick="changeItem('${escapeJs(name)}',-1)">-</button>
-        <input id="i-${escapeId(name)}" type="number" min="0" value="${display}" onchange="setItemFromInput('${escapeJs(name)}',this.value)" style="width:70px;text-align:center" />
-        <button onclick="changeItem('${escapeJs(name)}',1)">+</button>
-      </div>
-    `;
-
-    if(storeGroup[1].includes(name)) document.getElementById('store1').appendChild(row);
-    else if(storeGroup[2].includes(name)) document.getElementById('store2').appendChild(row);
-    else document.getElementById('store3').appendChild(row);
-  });
-}
-
-// ===== ユーティリティ =====
 function escapeId(s){return s.replace(/[^a-z0-9_-]/gi,'_');}
 function escapeJs(s){return s.replace(/'/g,"\\'");}
 
-// ===== メニュー操作 =====
-function addMenu(name,delta){
-  menuState[name] = Math.max(0,(menuState[name]||0) + delta);
-  setMenu(name, menuState[name]);
-}
-function setMenu(name,val){
-  menuState[name] = Math.max(0, Number(val)||0);
-  applyRecipe();
+function renderMenus(){
+ let d=document.getElementById('drinkMenu'),f=document.getElementById('foodMenu');d.innerHTML='';f.innerHTML='';
+ Object.keys(menus).forEach(n=>{
+  if(menuState[n]==null)menuState[n]=0;
+  let row=document.createElement('div');row.className='menu-row';
+  row.innerHTML=`<div style='flex:1'>${n}</div>
+   <div class='menu-controls'>
+    <button onclick="changeMenu('${escapeJs(n)}',-1)">-</button>
+    <input id="m-${escapeId(n)}" type="number" value="${menuState[n]}" min="0" onchange="setMenu('${escapeJs(n)}',this.value)" />
+    <button onclick="changeMenu('${escapeJs(n)}',1)">+</button>
+   </div>`;
+  (menus[n].cat==='drink'?d:f).appendChild(row);
+ });
 }
 
-// ===== レシピ適用 =====
+function renderItems(){
+ ensure();
+ ['store1','store2','store3'].forEach(id=>document.getElementById(id).innerHTML='');
+ Object.keys(items).forEach(n=>{
+  let disp=Math.max(0,(autoState[n]||0)+(manualState[n]||0));
+  let row=document.createElement('div');row.className='item-row';
+  row.innerHTML=`<div style='flex:1'>${n} (¥${items[n]})</div>
+   <div class='item-controls'>
+    <button onclick="changeItem('${escapeJs(n)}',-1)">-</button>
+    <input id="i-${escapeId(n)}" type="number" min="0" value="${disp}" onchange="setItemInput('${escapeJs(n)}',this.value)" />
+    <button onclick="changeItem('${escapeJs(n)}',1)">+</button>
+   </div>`;
+  if(storeGroup[1].includes(n))document.getElementById('store1').appendChild(row);
+  else if(storeGroup[2].includes(n))document.getElementById('store2').appendChild(row);
+  else document.getElementById('store3').appendChild(row);
+ });
+}
+
+// === メニュー → 自動
+function changeMenu(n,d){menuState[n]=Math.max(0,(menuState[n]||0)+d);setMenu(n,menuState[n]);}
+function setMenu(n,v){menuState[n]=Math.max(0,Number(v)||0);applyRecipe();}
+
 function applyRecipe(){
-  // 計算された自動分を作る
-  const recipeBase = {};
-  Object.keys(items).forEach(i => recipeBase[i] = 0);
-
-  Object.keys(menuState).forEach(menu => {
-    const count = menuState[menu] || 0;
-    Object.keys(menus[menu] || {}).forEach(mat => {
-      if(mat === 'cat') return;
-      recipeBase[mat] = (recipeBase[mat] || 0) + (menus[menu][mat] * count);
-    });
+ let base={};Object.keys(items).forEach(i=>base[i]=0);
+ Object.keys(menuState).forEach(m=>{
+  let c=menuState[m]||0;
+  Object.keys(menus[m]).forEach(mat=>{
+   if(mat==='cat')return;
+   base[mat]=(base[mat]||0)+menus[m][mat]*c;
   });
-
-  // 更新: autoState を差し替え
-  autoState = recipeBase;
-  ensureAllStates();
-
-  // 再計算表示は renderItems が行う
-  renderItems();
-  preview();
+ });
+ autoState=base; ensure(); renderItems(); preview();
 }
 
-// ===== 材料手動操作 =====
-function setItemFromInput(name, val){
-  const v = Math.max(0, Number(val) || 0);
-  // manualState = display - autoState
-  manualState[name] = v - (autoState[name] || 0);
-  renderItems();
-  preview();
+// === 材料手動
+function setItemInput(n,v){
+ let disp=Math.max(0,Number(v)||0);
+ manualState[n]=disp-(autoState[n]||0);
+ if(manualState[n]<0)manualState[n]=0;
+ renderItems(); preview();
+}
+function changeItem(n,d){
+ let inp=document.getElementById('i-'+escapeId(n));
+ let newVal=Math.max(0,(Number(inp.value)||0)+d);
+ setItemInput(n,newVal);
 }
 
-function setItem(name, val){ // direct set (not used but kept)
-  setItemFromInput(name,val);
-}
-
-function changeItem(name,delta){
-  const currentDisplay = Math.max(0, Number(document.getElementById('i-' + escapeId(name)).value) || 0);
-  const newDisplay = Math.max(0, currentDisplay + delta);
-  setItemFromInput(name, newDisplay);
-}
-
-// ===== プレビュー =====
+// === プレビュー
 function preview(){
-  let text = '';
-  let total = 0;
-  Object.keys(items).forEach(name=>{
-    const qty = Math.max(0, (autoState[name]||0) + (manualState[name]||0));
-    if(qty <= 0) return;
-    const price = items[name];
-    const cost = qty * price;
-    text += `${name}：${qty} 個 × ¥${price.toLocaleString('ja-JP')} = ¥${cost.toLocaleString('ja-JP')}\n`;
-    total += cost;
-  });
-  text += `\n合計金額：¥${total.toLocaleString('ja-JP')}`;
-  document.getElementById('preview').value = text;
+ let txt='',total=0;
+ Object.keys(items).forEach(n=>{
+  let q=Math.max(0,(autoState[n]||0)+(manualState[n]||0));
+  if(q>0){let cost=q*items[n];txt+=`${n}：${q} 個 × ¥${items[n].toLocaleString()} = ¥${cost.toLocaleString()}\n`;total+=cost;}
+ });
+ txt+=`\n合計金額：¥${total.toLocaleString()}`;
+ document.getElementById('preview').value=txt;
 }
 
-// ===== コピー =====
-function copyTotal(){
-  let total = 0;
-  Object.keys(items).forEach(name => {
-    const qty = Math.max(0, (autoState[name]||0) + (manualState[name]||0));
-    total += qty * items[name];
-  });
-  const txt = `合計金額：¥${total.toLocaleString('ja-JP')}`;
+// === コピー
+function copyTotal(){let t=0;Object.keys(items).forEach(n=>{t+=Math.max(0,(autoState[n]||0)+(manualState[n]||0))*items[n];});navigator.clipboard.writeText(`合計金額：¥${t.toLocaleString()}`);alert('コピーしました');}
 
-  // Clipboard with fallback
-  if(navigator.clipboard && typeof navigator.clipboard.writeText === 'function'){
-    navigator.clipboard.writeText(txt).then(()=>{
-      alert('合計金額をコピーしました');
-    }).catch(()=>{ fallbackCopy(txt); });
-  }else{
-    fallbackCopy(txt);
-  }
-}
-function fallbackCopy(text){
-  const ta = document.createElement('textarea'); ta.value = text; ta.style.position='fixed'; ta.style.left='-9999px'; document.body.appendChild(ta); ta.select();
-  try{ document.execCommand('copy'); alert('合計金額をコピーしました'); }catch(e){ alert('コピーに失敗しました。プレビューから手動でコピーしてください。'); }
-  document.body.removeChild(ta);
-}
+// === リセット
+function resetAll(){autoState={};manualState={};menuState={};ensure();renderMenus();renderItems();preview();}
 
-// ===== リセット =====
-function resetAll(){
-  autoState = {}; manualState = {}; menuState = {};
-  ensureAllStates(); renderMenus(); renderItems(); preview();
-}
+// === モード
+function toggleMode(){let b=document.getElementById('modeBtn');if(b.innerText.includes('PC')){b.innerText='スマホモード';document.body.style.fontSize='18px';}else{b.innerText='PCモード';document.body.style.fontSize='';}}
+function autoMode(){if(window.innerWidth<600){document.body.style.fontSize='18px';}}
 
-// ===== モード =====
-function toggleMode(){
-  const btn=document.getElementById('modeBtn');
-  if(btn.innerText.includes('PC')){
-    btn.innerText='スマホモード'; document.body.style.fontSize='18px';
-  }else{ btn.innerText='PCモード'; document.body.style.fontSize=''; }
-}
-function autoMode(){ if(window.innerWidth<600){document.body.style.fontSize='18px';} }
-
-// ===== 初期化 =====
-autoMode(); ensureAllStates(); renderMenus(); applyRecipe();
+autoMode();ensure();renderMenus();applyRecipe();
 </script>
 </body>
 </html>
