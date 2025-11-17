@@ -1,246 +1,276 @@
-<!doctype html>
+<!DOCTYPE html>
 <html lang="ja">
 <head>
-  <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width,initial-scale=1" />
-  <title>Bar105 — 仕入れ計算ツール</title>
-  <style>
-    :root{
-      --bg:#0b0f14;
-      --panel:#12171f;
-      --panel2:#181e26;
-      --accent:#c9a063;
-      --accent2:#8a6d43;
-      --text:#e8e2d3;
-      --muted:#a19886;
-    }
-    html,body{margin:0;padding:0;background:var(--bg);color:var(--text);font-family:'Shippori Mincho',serif;}
-    .wrap{max-width:1000px;margin:40px auto;padding:24px}
-    h1{font-size:24px;margin:0;color:var(--accent)}
-    header{margin-bottom:24px;border-bottom:1px solid rgba(255,255,255,0.05);padding-bottom:16px}
-    .card{background:var(--panel);padding:20px;border-radius:12px;box-shadow:0 0 20px rgba(0,0,0,0.6);border:1px solid rgba(255,255,255,0.06)}
-    .grid{display:grid;grid-template-columns:1fr 320px;gap:16px}
-    table{width:100%;border-collapse:collapse;font-size:14px}
-    th,td{padding:8px;text-align:left}
-    thead th{color:var(--muted)}
-    tbody tr{border-top:1px solid rgba(255,255,255,0.05)}
-    input{background:var(--panel2);border:1px solid rgba(255,255,255,0.08);color:var(--text);padding:6px;border-radius:6px;font-size:14px}
-    .qty{width:70px}
-    .btn{padding:8px 12px;border-radius:8px;border:none;cursor:pointer;font-size:14px}
-    .btn-primary{background:var(--accent2);color:white}
-    .btn-ghost{background:transparent;border:1px solid rgba(255,255,255,0.15);color:var(--muted)}
-    .btn-danger{background:transparent;border:1px solid rgba(255,80,80,0.3);color:#ffb3b3}
-    .muted{color:var(--muted);font-size:13px}
-    .total{font-size:22px;font-weight:700;margin-top:6px;color:var(--accent)}
-    textarea{width:100%;background:var(--panel2);border-radius:6px;border:1px solid rgba(255,255,255,0.08);color:var(--text);padding:8px}
-    .copy-status{display:inline-block;margin-left:8px;font-size:13px;color:var(--muted)}
-  </style>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Bar105 ショッピングリスト</title>
+<style>
+  body {margin:0;background:#1a1a1a;color:#eee;font-family:'Segoe UI',sans-serif;}
+  header{padding:16px;background:#111;border-bottom:1px solid #333;display:flex;justify-content:space-between;align-items:center;}
+  main{padding:20px;max-width:1200px;margin:auto;display:grid;grid-template-columns:1fr 1fr;gap:20px;}
+  h2{border-left:4px solid #b48a5a;padding-left:8px;margin:8px 0}
+  .card{background:#181818;padding:16px;border-radius:10px;border:1px solid #333;}
+  input[type='number'],input[type='text']{width:70px;background:#222;border:1px solid #444;color:#fff;padding:4px;border-radius:4px;}
+  .menu-row,.item-row{display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;gap:8px}
+  .menu-controls button,.item-controls button{width:34px;height:28px;border-radius:6px;border:none;background:#333;color:#fff;cursor:pointer}
+  .copy-btn,.reset-btn{padding:10px 18px;background:#b48a5a;color:#000;border:none;border-radius:6px;cursor:pointer;margin-top:10px;margin-right:8px}
+  textarea{width:100%;height:200px;background:#111;color:#fff;border:1px solid #444;border-radius:6px;padding:8px;}
+  .stores{display:grid;grid-template-columns:repeat(3,1fr);gap:12px}
+  @media (max-width:900px){main{grid-template-columns:1fr;}.stores{grid-template-columns:1fr}}
+</style>
 </head>
 <body>
-  <div class="wrap">
-    <header>
-      <h1>Bar105 — 仕入れ計算ツール</h1>
-      <div style="margin-top:6px">
-        <label><input type="checkbox" id="editMode"> 編集モード</label>
-      </div>
-    </header>
+<header>
+  <h1>Bar105 ショッピングリスト</h1>
+  <button onclick="toggleMode()" id="modeBtn">PCモード</button>
+</header>
 
-    <div class="grid">
-      <div class="card">
-        <div style="display:flex;justify-content:space-between;align-items:center">
-          <strong>材料リスト</strong>
-          <div style="display:flex;gap:6px">
-            <button id="addItem" class="btn btn-ghost">材料追加</button>
-            <button id="resetDefaults" class="btn btn-ghost">初期化</button>
-            <button id="resetQty" class="btn btn-ghost">数量リセット</button>
-          </div>
-        </div>
+<main>
+  <!-- 左：メニュー（飲み物・食べ物） -->
+  <div class="card">
+    <h2>メニュー（飲み物）</h2>
+    <div id="drinkMenu"></div>
+    <h2>メニュー（食べ物）</h2>
+    <div id="foodMenu"></div>
+  </div>
 
-        <table style="margin-top:14px">
-          <thead>
-            <tr>
-              <th>材料名</th><th>単価</th><th>個数</th><th>小計</th><th></th>
-            </tr>
-          </thead>
-          <tbody id="itemsBody"></tbody>
-        </table>
-      </div>
-
-      <aside class="card">
-        <label class="muted">報告者</label>
-        <input id="reporter" type="text" placeholder="例：サヤ" style="margin-top:6px;width:100%" />
-
-        <div style="margin-top:16px" class="muted">合計金額</div>
-        <div class="total" id="totalArea">¥0</div>
-
-        <div style="margin-top:14px;display:flex;gap:10px;flex-wrap:wrap;align-items:center">
-          <button id="copyMemo" class="btn btn-primary">メモをコピー</button>
-          <span id="copyStatus" class="copy-status"></span>
-          <button id="previewBtn" class="btn btn-ghost">プレビュー</button>
-        </div>
-
-        <textarea id="previewArea" rows="10" style="margin-top:14px"></textarea>
-      </aside>
+  <!-- 右：プレビューと合計 -->
+  <div class="card">
+    <h2>プレビュー（材料一覧）</h2>
+    <textarea id="preview" readonly></textarea>
+    <div style="margin-top:8px">
+      <button class="copy-btn" onclick="copyTotal()">合計金額をコピー</button>
+      <button class="reset-btn" onclick="resetAll()">リセット</button>
     </div>
   </div>
 
-  <script>
-    const DEFAULT_ITEMS = {
-      "砂糖": 300,
-      "炭酸水": 1200,
-      "ミント": 600,
-      "シュガーシロップ": 1500,
-      "くるみ": 300,
-      "トマト": 1200,
-      "チェダーチーズ": 300,
-      "にんにく": 300,
-      "きのこ": 2400,
-      "油": 300
-    };
+  <!-- 下：材料（店舗別） -->
+  <div class="card" style="grid-column: span 2;">
+    <h2>材料一覧（店舗別）</h2>
+    <div class="stores">
+      <div>
+        <h3>店舗①</h3>
+        <div id="store1"></div>
+      </div>
+      <div>
+        <h3>店舗②</h3>
+        <div id="store2"></div>
+      </div>
+      <div>
+        <h3>店舗③</h3>
+        <div id="store3"></div>
+      </div>
+    </div>
+  </div>
+</main>
 
-    const LS_KEY = 'gta5_bar_items_v1';
+<script>
+// ===== 材料データ =====
+const items = {
+  'ショウガ':300,'チェダーチーズ':300,'にんにく':300,'きのこ':2400,'トマト':1200,'豚肉':500,'みかん':1200,
+  'ミント':600,'くるみ':300,'まめ':200,'落花生':200,'りんご':1500,'油':300,'塩':1000,
+  '砂糖':300,'ガムシロップ':1500,'ココアパウダー':600,'小麦粉':300,'イースト':300,
+  '炭酸水':1200,'牛乳':600,'料理酒':3000
+};
 
-    function loadItems(){ const raw = localStorage.getItem(LS_KEY); return raw? JSON.parse(raw):{...DEFAULT_ITEMS}; }
-    function saveItems(i){ localStorage.setItem(LS_KEY, JSON.stringify(i)); }
+const storeGroup = {
+  1:['ショウガ','チェダーチーズ','にんにく','きのこ','トマト','豚肉','みかん','ミント','くるみ','まめ','落花生','りんご','油','塩'],
+  2:['砂糖','ガムシロップ','ココアパウダー','小麦粉','イースト'],
+  3:['炭酸水','牛乳','料理酒']
+};
 
-    let items = loadItems();
+// ===== メニューレシピ =====
+const menus = {
+  // 飲み物
+  'テキーラサンライズ':{cat:'drink','砂糖':1,'炭酸水':1,'みかん':1},
+  'マティーニ':{cat:'drink','料理酒':1},
+  'マンハッタン':{cat:'drink','料理酒':1},
+  'モヒート':{cat:'drink','砂糖':1,'炭酸水':1,'ミント':1},
+  'ウィスキー(ロック)':{cat:'drink','砂糖':1,'炭酸水':1,'ミント':1},
+  'ジントニック':{cat:'drink','砂糖':1,'炭酸水':1},
+  'カルーアミルク':{cat:'drink','ココアパウダー':1,'砂糖':1,'牛乳':1},
+  'ファジーネーブル':{cat:'drink','砂糖':1,'みかん':1},
+  'ビール':{cat:'drink','砂糖':1,'イースト':1,'小麦粉':1},
 
-    const itemsBody = document.getElementById('itemsBody');
-    const totalArea = document.getElementById('totalArea');
-    const reporter = document.getElementById('reporter');
-    const previewArea = document.getElementById('previewArea');
-    const copyStatus = document.getElementById('copyStatus');
-    const editMode = document.getElementById('editMode');
+  // 食べ物
+  'アヒージョ':{cat:'food','にんにく':1,'きのこ':1,'油':1},
+  'カプレーゼ':{cat:'food','トマト':1,'チェダーチーズ':1},
+  'りんごとシナモンのスティック':{cat:'food','りんご':1,'ショウガ':1,'砂糖':1},
+  '生ハム':{cat:'food','豚肉':1,'塩':1},
+  'ミックスナッツ':{cat:'food','くるみ':1,'まめ':1,'落花生':1}
+};
 
-    function formatJPY(n){ return '¥'+Number(n).toLocaleString('ja-JP'); }
+// ===== 状態 =====
+let autoState = {};   // レシピ（メニュー）から計算される数量
+let manualState = {}; // 材料欄で手入力された追加分（差分）
+let menuState = {};   // メニューごとの個数
 
-    function td(el){ const t=document.createElement('td'); t.appendChild(el); return t; }
+// 初期化 helper
+function ensureAllStates(){
+  Object.keys(items).forEach(name=>{
+    if(autoState[name]==null) autoState[name]=0;
+    if(manualState[name]==null) manualState[name]=0;
+  });
+}
 
-    function render(){
-      itemsBody.innerHTML = '';
-      const editing = editMode.checked;
+// ===== 描画 =====
+function renderMenus(){
+  const drink = document.getElementById('drinkMenu');
+  const food = document.getElementById('foodMenu');
+  drink.innerHTML=''; food.innerHTML='';
 
-      Object.keys(items).forEach(key =>{
-        const price = items[key];
-        const tr=document.createElement('tr');
+  Object.keys(menus).forEach(name=>{
+    if(menuState[name]==null) menuState[name]=0;
+    const row=document.createElement('div'); row.className='menu-row';
 
-        const nameInput=document.createElement('input'); nameInput.value=key;
-        nameInput.disabled=!editing;
-        nameInput.addEventListener('change',e=>{
-          if(!editing) return;
-          const newName=e.target.value.trim();
-          if(!newName||newName===key){ e.target.value=key; return; }
-          if(items[newName]!==undefined){ alert('同名の材料があります'); e.target.value=key; return; }
-          items[newName]=items[key]; delete items[key]; saveItems(items); render();
-        });
+    row.innerHTML = `
+      <div style="flex:1">${name}</div>
+      <div class="menu-controls">
+        <button aria-label="decrease" onclick="addMenu('${escapeJs(name)}',-1)">-</button>
+        <input id="m-${escapeId(name)}" type="number" min="0" value="${menuState[name]}" onchange="setMenu('${escapeJs(name)}',this.value)" style="width:60px;text-align:center" />
+        <button aria-label="increase" onclick="addMenu('${escapeJs(name)}',1)">+</button>
+      </div>
+    `;
 
-        const priceInput=document.createElement('input'); priceInput.type='number'; priceInput.value=price;
-        priceInput.disabled=!editing;
-        priceInput.addEventListener('change',e=>{
-          if(!editing) return;
-          items[key]=Math.max(0,Number(e.target.value)||0); saveItems(items); render();
-        });
+    (menus[name].cat==='drink' ? drink : food).appendChild(row);
+  });
+}
 
-        const qtyInput=document.createElement('input'); qtyInput.type='number'; qtyInput.value=0; qtyInput.className='qty';
-        qtyInput.addEventListener('input',renderTotals);
+function renderItems(){
+  ['store1','store2','store3'].forEach(id=>document.getElementById(id).innerHTML='');
+  ensureAllStates();
 
-        const subCell=document.createElement('td'); subCell.textContent=formatJPY(0);
+  Object.keys(items).forEach(name=>{
+    const display = Math.max(0,(autoState[name]||0) + (manualState[name]||0));
+    const row=document.createElement('div'); row.className='item-row';
+    row.innerHTML = `
+      <div style="flex:1">${name} (¥${items[name]})</div>
+      <div class="item-controls">
+        <button onclick="changeItem('${escapeJs(name)}',-1)">-</button>
+        <input id="i-${escapeId(name)}" type="number" min="0" value="${display}" onchange="setItemFromInput('${escapeJs(name)}',this.value)" style="width:70px;text-align:center" />
+        <button onclick="changeItem('${escapeJs(name)}',1)">+</button>
+      </div>
+    `;
 
-        const del=document.createElement('button'); del.textContent='削除'; del.className='btn btn-danger';
-        del.style.display = editing? 'inline-block':'none';
-        del.addEventListener('click',()=>{
-          if(!editing) return;
-          if(confirm(key+' を削除しますか？')){ delete items[key]; saveItems(items); render(); }
-        });
+    if(storeGroup[1].includes(name)) document.getElementById('store1').appendChild(row);
+    else if(storeGroup[2].includes(name)) document.getElementById('store2').appendChild(row);
+    else document.getElementById('store3').appendChild(row);
+  });
+}
 
-        tr.appendChild(td(nameInput));
-        tr.appendChild(td(priceInput));
-        tr.appendChild(td(qtyInput));
-        tr.appendChild(subCell);
-        const delTd=document.createElement('td'); delTd.appendChild(del); tr.appendChild(delTd);
+// ===== ユーティリティ =====
+function escapeId(s){return s.replace(/[^a-z0-9_-]/gi,'_');}
+function escapeJs(s){return s.replace(/'/g,"\\'");}
 
-        tr._key=key; tr._qty=qtyInput; tr._sub=subCell;
-        itemsBody.appendChild(tr);
-      });
-      renderTotals();
-    }
+// ===== メニュー操作 =====
+function addMenu(name,delta){
+  menuState[name] = Math.max(0,(menuState[name]||0) + delta);
+  setMenu(name, menuState[name]);
+}
+function setMenu(name,val){
+  menuState[name] = Math.max(0, Number(val)||0);
+  applyRecipe();
+}
 
-    function renderTotals(){
-      let total=0;
-      itemsBody.querySelectorAll('tr').forEach(r=>{
-        const qty=Number(r._qty.value)||0;
-        const price=Number(items[r._key]||0);
-        const sub=qty*price;
-        r._sub.textContent=formatJPY(sub);
-        total+=sub;
-      });
-      totalArea.textContent=formatJPY(total);
-    }
+// ===== レシピ適用 =====
+function applyRecipe(){
+  // 計算された自動分を作る
+  const recipeBase = {};
+  Object.keys(items).forEach(i => recipeBase[i] = 0);
 
-    document.getElementById('addItem').addEventListener('click',()=>{
-      if(!editMode.checked){ alert('編集モードをオンにしてください'); return; }
-      let base='新しい材料',i=1,name=base;
-      while(items[name]!==undefined) name=base+(i++);
-      items[name]=0; saveItems(items); render();
+  Object.keys(menuState).forEach(menu => {
+    const count = menuState[menu] || 0;
+    Object.keys(menus[menu] || {}).forEach(mat => {
+      if(mat === 'cat') return;
+      recipeBase[mat] = (recipeBase[mat] || 0) + (menus[menu][mat] * count);
     });
+  });
 
-    document.getElementById('resetDefaults').addEventListener('click',()=>{
-      if(!editMode.checked){ alert('編集モード時のみ使用できます'); return; }
-      if(confirm('初期値に戻しますか？')){ items={...DEFAULT_ITEMS}; saveItems(items); render(); }
-    });
+  // 更新: autoState を差し替え
+  autoState = recipeBase;
+  ensureAllStates();
 
-    document.getElementById('resetQty').addEventListener('click',()=>{
-      itemsBody.querySelectorAll('tr').forEach(r=> r._qty.value=0);
-      renderTotals();
-    });
+  // 再計算表示は renderItems が行う
+  renderItems();
+  preview();
+}
 
-    editMode.addEventListener('change',render);
+// ===== 材料手動操作 =====
+function setItemFromInput(name, val){
+  const v = Math.max(0, Number(val) || 0);
+  // manualState = display - autoState
+  manualState[name] = v - (autoState[name] || 0);
+  renderItems();
+  preview();
+}
 
-    document.getElementById('previewBtn').addEventListener('click',()=>{
-      previewArea.value=buildMemo();
-    });
+function setItem(name, val){ // direct set (not used but kept)
+  setItemFromInput(name,val);
+}
 
-    document.getElementById('copyMemo').addEventListener('click',async(e)=>{
-      const text=buildMemo(); copyStatus.textContent=''; const btn=e.currentTarget; btn.disabled=true;
-      try{
-        if(navigator.clipboard) await navigator.clipboard.writeText(text);
-        else{
-          const ta=document.createElement('textarea'); ta.value=text;
-          ta.style.position='fixed'; ta.style.left='-9999px';
-          document.body.appendChild(ta); ta.select(); document.execCommand('copy'); document.body.removeChild(ta);
-        }
-        copyStatus.textContent='コピーしました'; setTimeout(()=> copyStatus.textContent='',2000);
-      }catch(err){ copyStatus.textContent='コピー不可'; previewArea.value=text; }
-      finally{ btn.disabled=false; }
-    });
+function changeItem(name,delta){
+  const currentDisplay = Math.max(0, Number(document.getElementById('i-' + escapeId(name)).value) || 0);
+  const newDisplay = Math.max(0, currentDisplay + delta);
+  setItemFromInput(name, newDisplay);
+}
 
-    function buildMemo(){
-      const d=new Date();
-      const date=`${d.getFullYear()}/${String(d.getMonth()+1).padStart(2,'0')}/${String(d.getDate()).padStart(2,'0')}`;
-      const who=(reporter.value||'（名前）').trim();
-      let total=0; const lines=[];
+// ===== プレビュー =====
+function preview(){
+  let text = '';
+  let total = 0;
+  Object.keys(items).forEach(name=>{
+    const qty = Math.max(0, (autoState[name]||0) + (manualState[name]||0));
+    if(qty <= 0) return;
+    const price = items[name];
+    const cost = qty * price;
+    text += `${name}：${qty} 個 × ¥${price.toLocaleString('ja-JP')} = ¥${cost.toLocaleString('ja-JP')}\n`;
+    total += cost;
+  });
+  text += `\n合計金額：¥${total.toLocaleString('ja-JP')}`;
+  document.getElementById('preview').value = text;
+}
 
-      itemsBody.querySelectorAll('tr').forEach(r=>{
-        const qty=Number(r._qty.value)||0;
-        if(qty>0){
-          const price=Number(items[r._key]||0);
-          const sub=qty*price;
-          total+=sub;
-          lines.push(`${r._key} ${price.toLocaleString('ja-JP')}円×${qty}個＝${sub.toLocaleString('ja-JP')}円`);
-        }
-      });
+// ===== コピー =====
+function copyTotal(){
+  let total = 0;
+  Object.keys(items).forEach(name => {
+    const qty = Math.max(0, (autoState[name]||0) + (manualState[name]||0));
+    total += qty * items[name];
+  });
+  const txt = `合計金額：¥${total.toLocaleString('ja-JP')}`;
 
-      const out=[];
-      out.push(`${date} ${who} 買い出し分のレシートです。`);
-      out.push(`合計金額　${total.toLocaleString('ja-JP')}円`);
-      out.push("");
-      if(lines.length===0) out.push('(購入した物はありません)');
-      else out.push(...lines);
+  // Clipboard with fallback
+  if(navigator.clipboard && typeof navigator.clipboard.writeText === 'function'){
+    navigator.clipboard.writeText(txt).then(()=>{
+      alert('合計金額をコピーしました');
+    }).catch(()=>{ fallbackCopy(txt); });
+  }else{
+    fallbackCopy(txt);
+  }
+}
+function fallbackCopy(text){
+  const ta = document.createElement('textarea'); ta.value = text; ta.style.position='fixed'; ta.style.left='-9999px'; document.body.appendChild(ta); ta.select();
+  try{ document.execCommand('copy'); alert('合計金額をコピーしました'); }catch(e){ alert('コピーに失敗しました。プレビューから手動でコピーしてください。'); }
+  document.body.removeChild(ta);
+}
 
-      return out.join("\n");
-    }
+// ===== リセット =====
+function resetAll(){
+  autoState = {}; manualState = {}; menuState = {};
+  ensureAllStates(); renderMenus(); renderItems(); preview();
+}
 
-    render();
-  </script>
+// ===== モード =====
+function toggleMode(){
+  const btn=document.getElementById('modeBtn');
+  if(btn.innerText.includes('PC')){
+    btn.innerText='スマホモード'; document.body.style.fontSize='18px';
+  }else{ btn.innerText='PCモード'; document.body.style.fontSize=''; }
+}
+function autoMode(){ if(window.innerWidth<600){document.body.style.fontSize='18px';} }
+
+// ===== 初期化 =====
+autoMode(); ensureAllStates(); renderMenus(); applyRecipe();
+</script>
 </body>
 </html>
